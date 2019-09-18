@@ -16,7 +16,7 @@ const defaultTheme = {
   cdataColor: '#1d781d',
 };
 
-const XMLViewer = ({ xml, theme = {}, indentSize=defaultIndentSize }) => {
+const XMLViewer = ({ xml, theme = {}, indentSize=defaultIndentSize, renderElement, renderAttribute }) => {
   let json = null;
   const customTheme = { ...defaultTheme, ...theme };
 
@@ -29,7 +29,7 @@ const XMLViewer = ({ xml, theme = {}, indentSize=defaultIndentSize }) => {
   return (
     <div>
       {json.declaration && <DeclarationElement theme={customTheme} attributes={json.declaration.attributes} />}
-      <Elements elements={json.elements} theme={customTheme} indentSize={indentSize} indentation="" />
+      <Elements elements={json.elements} theme={customTheme} indentSize={indentSize} indentation="" parentXPath="" renderElement={renderElement} renderAttribute={renderAttribute} />
     </div>
   );
 }
@@ -41,4 +41,3 @@ XMLViewer.propTypes = {
 }
 
 export default XMLViewer;
-

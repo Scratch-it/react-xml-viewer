@@ -2329,40 +2329,58 @@ var lib = {
   json2xml: json2xml
 };
 
+var identity = function identity(value) {
+  return value;
+};
+
 var Attributes = function Attributes(_ref) {
-    var attributes = _ref.attributes,
-        theme = _ref.theme;
+  var attributes = _ref.attributes,
+      theme = _ref.theme,
+      renderAttribute = _ref.renderAttribute,
+      nodeXpath = _ref.nodeXpath;
 
-    var attributeList = [];
+  var attributeList = [];
 
-    for (var key in attributes) {
-        attributeList.push(React.createElement(
-            'span',
-            { key: 'attr-' + key + '[' + attributes[key] + ']' },
-            React.createElement(
-                'span',
-                { style: { color: theme.attributeKeyColor } },
-                ' ' + key
-            ),
-            React.createElement(
-                'span',
-                { style: { color: theme.separatorColor } },
-                "="
-            ),
-            React.createElement(
-                'span',
-                { style: { color: theme.attributeValueColor } },
-                '"' + attributes[key] + '"'
-            )
-        ));
-    }
+  var _loop = function _loop(key) {
+    var value = attributes[key];
+    var attributeXpath = nodeXpath + '/@' + key;
+    var attributeWrapper = renderAttribute ? function (attrElement) {
+      return renderAttribute({ xpath: attributeXpath, key: key, value: value, theme: theme }, attrElement);
+    } : identity;
 
-    return attributeList;
+    attributeList.push(attributeWrapper(React.createElement(
+      'span',
+      { key: 'attr-' + key + '[' + value + ']' },
+      React.createElement(
+        'span',
+        { style: { color: theme.attributeKeyColor } },
+        ' ' + key
+      ),
+      React.createElement(
+        'span',
+        { style: { color: theme.separatorColor } },
+        "="
+      ),
+      React.createElement(
+        'span',
+        { style: { color: theme.attributeValueColor } },
+        '"' + value + '"'
+      )
+    )));
+  };
+
+  for (var key in attributes) {
+    _loop(key);
+  }
+
+  return attributeList;
 };
 
 Attributes.propTypes = {
-    attributes: PropTypes.object,
-    theme: PropTypes.object.isRequired
+  attributes: PropTypes.object,
+  renderAttribute: PropTypes.func,
+  theme: PropTypes.object.isRequired,
+  nodeXpath: PropTypes.string
 };
 
 var DeclarationElement = function DeclarationElement(_ref) {
@@ -2501,7 +2519,9 @@ var Element = function Element(_ref) {
         attributes = _ref.attributes,
         theme = _ref.theme,
         indentation = _ref.indentation,
-        indentSize = _ref.indentSize;
+        indentSize = _ref.indentSize,
+        renderAttribute = _ref.renderAttribute,
+        parentXpath = _ref.parentXpath;
 
     return React.createElement(
         'div',
@@ -2516,13 +2536,13 @@ var Element = function Element(_ref) {
             { style: { color: theme.tagColor } },
             name
         ),
-        React.createElement(Attributes, { attributes: attributes, theme: theme }),
+        React.createElement(Attributes, { attributes: attributes, theme: theme, renderAttribute: renderAttribute, nodeXpath: parentXpath }),
         React.createElement(
             'span',
             { style: { color: theme.separatorColor } },
             elements ? '>' : '/>'
         ),
-        elements && React.createElement(Elements, { elements: elements, theme: theme, indentation: indentation + getIndentationString(indentSize), indentSize: indentSize }),
+        elements && React.createElement(Elements, { elements: elements, theme: theme, indentation: indentation + getIndentationString(indentSize), indentSize: indentSize, parentXPath: parentXpath }),
         elements && React.createElement(
             'span',
             { style: { color: theme.separatorColor } },
@@ -2547,42 +2567,80 @@ Element.propTypes = {
     attributes: PropTypes.object,
     theme: PropTypes.object.isRequired,
     indentation: PropTypes.string.isRequired,
-    indentSize: PropTypes.number.isRequired
+    indentSize: PropTypes.number.isRequired,
+    renderAttribute: PropTypes.func,
+    xpath: PropTypes.string.isRequired
 };
 
-var getElement = function getElement(theme, indentation, indentSize) {
+var identity$1 = function identity(value) {
+    return value;
+};
+
+var getElement = function getElement(theme, indentation, indentSize, renderAttribute, parentXpath, xpath) {
     return function (element, index) {
         switch (element.type) {
             case "text":
-                return React.createElement(TextElement, { key: 'el-' + index, text: element.text, theme: theme });
+                return React.createElement(TextElement, { key: 'el-' + index, text: element.text, theme: theme, xpath: xpath });
             case "element":
-                return React.createElement(Element, { key: 'el-' + index, name: element.name, elements: element.elements, attributes: element.attributes, theme: theme, indentation: indentation, indentSize: indentSize });
+                return React.createElement(Element, { key: 'el-' + index, name: element.name, elements: element.elements, attributes: element.attributes, theme: theme, indentation: indentation, indentSize: indentSize, renderAttribute: renderAttribute, parentXpath: parentXpath });
             case "comment":
-                return React.createElement(CommentElement, { key: 'el-' + index, comment: element.comment, theme: theme, indentation: indentation });
+                return React.createElement(CommentElement, { key: 'el-' + index, comment: element.comment, theme: theme, indentation: indentation, xpath: xpath });
             case "cdata":
-                return React.createElement(CdataElement, { key: 'el-' + index, cdata: element.cdata, theme: theme, indentation: indentation });
+                return React.createElement(CdataElement, { key: 'el-' + index, cdata: element.cdata, theme: theme, indentation: indentation, xpath: xpath });
             case "instruction":
-                return React.createElement(InstructionElement, { key: 'el-' + index, instruction: element.instruction, name: element.name, theme: theme, indentation: indentation });
+                return React.createElement(InstructionElement, { key: 'el-' + index, instruction: element.instruction, name: element.name, theme: theme, indentation: indentation, xpath: xpath });
             default:
                 return null;
         }
     };
 };
 
+var getRelativeXpath = function getRelativeXpath(element) {
+    switch (element.type) {
+        case "text":
+            return '/text()';
+        case "element":
+            return '/node()';
+        case "comment":
+            return '/comment()';
+        case "cdata":
+            return '/text()';
+        case "instruction":
+            return '/processing-instruction()';
+        default:
+            return '/node()';
+    }
+};
+
 var Elements = function Elements(_ref2) {
     var elements = _ref2.elements,
         theme = _ref2.theme,
         indentation = _ref2.indentation,
-        indentSize = _ref2.indentSize;
+        indentSize = _ref2.indentSize,
+        renderAttribute = _ref2.renderAttribute,
+        renderElement = _ref2.renderElement,
+        parentXPath = _ref2.parentXPath;
 
-    return elements.map(getElement(theme, indentation, indentSize));
+    return elements.map(function (element, index) {
+        var name = element.name;
+
+        var parentXpath = parentXPath + '/' + name + '[' + index + ']';
+        var xpath = '' + parentXpath + getRelativeXpath(element);
+        var elementWrapper = renderElement ? function (el) {
+            return renderElement({ indentation: indentation, indentSize: indentSize, theme: theme, element: element, xpath: 'relative' }, el);
+        } : identity$1;
+
+        return elementWrapper(getElement(theme, indentation, indentSize, renderAttribute, parentXpath, xpath)(element, index));
+    });
 };
 
 Elements.propTypes = {
     elements: PropTypes.arrayOf(PropTypes.object),
     theme: PropTypes.object.isRequired,
     indentation: PropTypes.string.isRequired,
-    indentSize: PropTypes.number.isRequired
+    indentSize: PropTypes.number.isRequired,
+    renderElement: PropTypes.function,
+    parentXPath: PropTypes.string.isRequired
 };
 
 var _extends = Object.assign || function (target) {
@@ -2615,7 +2673,9 @@ var XMLViewer = function XMLViewer(_ref) {
       _ref$theme = _ref.theme,
       theme = _ref$theme === undefined ? {} : _ref$theme,
       _ref$indentSize = _ref.indentSize,
-      indentSize = _ref$indentSize === undefined ? defaultIndentSize : _ref$indentSize;
+      indentSize = _ref$indentSize === undefined ? defaultIndentSize : _ref$indentSize,
+      renderElement = _ref.renderElement,
+      renderAttribute = _ref.renderAttribute;
 
   var json = null;
   var customTheme = _extends({}, defaultTheme, theme);
@@ -2634,7 +2694,7 @@ var XMLViewer = function XMLViewer(_ref) {
     'div',
     null,
     json.declaration && React.createElement(DeclarationElement, { theme: customTheme, attributes: json.declaration.attributes }),
-    React.createElement(Elements, { elements: json.elements, theme: customTheme, indentSize: indentSize, indentation: '' })
+    React.createElement(Elements, { elements: json.elements, theme: customTheme, indentSize: indentSize, indentation: '', parentXPath: '', renderElement: renderElement, renderAttribute: renderAttribute })
   );
 };
 

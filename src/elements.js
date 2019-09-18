@@ -15,14 +15,14 @@ function isTextElement(elements) {
     return elements.length === 1 && elements[0].type === "text";
 }
 
-const Element = ({ name, elements, attributes, theme, indentation, indentSize }) => {
+const Element = ({ name, elements, attributes, theme, indentation, indentSize, renderAttribute, parentXpath }) => {
     return (
         <div style={{ whiteSpace: 'pre' }}>
             <span style={{ color: theme.separatorColor }}>{`${indentation}<`}</span>
             <span style={{ color: theme.tagColor }}>{name}</span>
-            <Attributes attributes={attributes} theme={theme} />
+            <Attributes attributes={attributes} theme={theme} renderAttribute={renderAttribute} nodeXpath={parentXpath} />
             <span style={{ color: theme.separatorColor }}>{(elements ? '>' : '/>')}</span>
-            {elements && <Elements elements={elements} theme={theme} indentation={indentation + getIndentationString(indentSize)} indentSize={indentSize} />}
+            {elements && <Elements elements={elements} theme={theme} indentation={indentation + getIndentationString(indentSize)} indentSize={indentSize} parentXPath={parentXpath} />}
             {elements && <span style={{ color: theme.separatorColor }}>{`${isTextElement(elements) ? "" : indentation}</`}</span>}
             {elements && <span style={{ color: theme.tagColor }}>{name}</span>}
             {elements && <span style={{ color: theme.separatorColor }}>{">"}</span>}
@@ -37,27 +37,57 @@ Element.propTypes = {
     theme: PropTypes.object.isRequired,
     indentation: PropTypes.string.isRequired,
     indentSize: PropTypes.number.isRequired,
+    renderAttribute: PropTypes.func,
+    xpath: PropTypes.string.isRequired,
 }
 
-const getElement = (theme, indentation, indentSize) => (element, index) => {
+const identity = value => value;
+
+const getElement = (theme, indentation, indentSize, renderAttribute, parentXpath, xpath) => (element, index) => {
     switch (element.type) {
         case "text":
-            return <TextElement key={`el-${index}`} text={element.text} theme={theme} />;
+            return <TextElement key={`el-${index}`} text={element.text} theme={theme} xpath={xpath} />;
         case "element":
-            return <Element key={`el-${index}`} name={element.name} elements={element.elements} attributes={element.attributes} theme={theme} indentation={indentation} indentSize={indentSize} />
+            return <Element key={`el-${index}`} name={element.name} elements={element.elements} attributes={element.attributes} theme={theme} indentation={indentation} indentSize={indentSize} renderAttribute={renderAttribute} parentXpath={parentXpath} />
         case "comment":
-            return <CommentElement key={`el-${index}`} comment={element.comment} theme={theme} indentation={indentation} />;
+            return <CommentElement key={`el-${index}`} comment={element.comment} theme={theme} indentation={indentation} xpath={xpath} />;
         case "cdata":
-            return <CdataElement key={`el-${index}`} cdata={element.cdata} theme={theme} indentation={indentation} />;
+            return <CdataElement key={`el-${index}`} cdata={element.cdata} theme={theme} indentation={indentation} xpath={xpath} />;
         case "instruction":
-            return <InstructionElement key={`el-${index}`} instruction={element.instruction} name={element.name} theme={theme} indentation={indentation} />;
+            return <InstructionElement key={`el-${index}`} instruction={element.instruction} name={element.name} theme={theme} indentation={indentation} xpath={xpath} />;
         default:
             return null;
     }
 }
 
-const Elements = ({ elements, theme, indentation, indentSize }) => {
-    return elements.map(getElement(theme, indentation, indentSize));
+const getRelativeXpath = element => {
+  switch (element.type) {
+      case "text":
+          return '/text()';
+      case "element":
+          return '/node()';
+      case "comment":
+          return '/comment()';
+      case "cdata":
+          return '/text()';
+      case "instruction":
+          return '/processing-instruction()';
+      default:
+          return '/node()';
+    }
+}
+
+const Elements = ({ elements, theme, indentation, indentSize, renderAttribute, renderElement, parentXPath }) => {
+    return elements.map((element, index) => {
+      const { name } = element
+      const parentXpath = `${parentXPath}/${name}[${index}]`
+      const xpath = `${parentXpath}${getRelativeXpath(element)}`
+      const elementWrapper = renderElement
+          ? el => renderElement({ indentation, indentSize, theme, element, xpath: `relative` }, el)
+          : identity;
+
+      return elementWrapper(getElement(theme, indentation, indentSize, renderAttribute, parentXpath, xpath)(element, index))
+    })
 }
 
 Elements.propTypes = {
@@ -65,6 +95,8 @@ Elements.propTypes = {
     theme: PropTypes.object.isRequired,
     indentation: PropTypes.string.isRequired,
     indentSize: PropTypes.number.isRequired,
+    renderElement: PropTypes.function,
+    parentXPath: PropTypes.string.isRequired,
 }
 
 export default Elements;

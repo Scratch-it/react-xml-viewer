@@ -5,7 +5,13 @@
   "author": "alissonmbr",
   "license": "MIT",
   "repository": "alissonmbr/react-xml-viewer",
-  "keywords": ["xml", "prettify", "beautify", "viewer", "formatter"],
+  "keywords": [
+    "xml",
+    "prettify",
+    "beautify",
+    "viewer",
+    "formatter"
+  ],
   "main": "dist/index.js",
   "module": "dist/index.es.js",
   "jsnext:main": "dist/index.es.js",

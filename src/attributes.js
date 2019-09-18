@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 
 const identity = value => value;
 
-const Attributes = ({ attributes, theme, renderAttribute, nodeXpath }) => {
+const getAttributes = ({ attributes, theme, renderAttribute, nodeXpath }) => {
     let attributeList = [];
 
     for (const key in attributes) {
@@ -15,15 +15,21 @@ const Attributes = ({ attributes, theme, renderAttribute, nodeXpath }) => {
 
       attributeList.push(attributeWrapper(
         <span key={`attr-${key}[${value}]`}>
-        <span style={{ color: theme.attributeKeyColor }}>{` ${key}`}</span>
-        <span style={{ color: theme.separatorColor }}>{"="}</span>
-        <span style={{ color: theme.attributeValueColor }}>{`"${value}"`}</span>
+          <span style={{ color: theme.attributeKeyColor }}>{` ${key}`}</span>
+          <span style={{ color: theme.separatorColor }}>{"="}</span>
+          <span style={{ color: theme.attributeValueColor }}>{`"${value}"`}</span>
         </span>
       ));
     }
 
 
     return attributeList;
+}
+
+const Attributes = (props) => {
+  const attrArr = getAttributes(props)
+
+  return <span>{attrArr}</span>
 }
 
 Attributes.propTypes = {

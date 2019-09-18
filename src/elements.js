@@ -15,14 +15,14 @@ function isTextElement(elements) {
     return elements.length === 1 && elements[0].type === "text";
 }
 
-const Element = ({ name, elements, attributes, theme, indentation, indentSize, renderAttribute, parentXpath }) => {
+const Element = ({ name, elements, attributes, theme, indentation, indentSize, renderAttribute, renderElement, parentXpath }) => {
     return (
         <div style={{ whiteSpace: 'pre' }}>
             <span style={{ color: theme.separatorColor }}>{`${indentation}<`}</span>
             <span style={{ color: theme.tagColor }}>{name}</span>
             <Attributes attributes={attributes} theme={theme} renderAttribute={renderAttribute} nodeXpath={parentXpath} />
             <span style={{ color: theme.separatorColor }}>{(elements ? '>' : '/>')}</span>
-            {elements && <Elements elements={elements} theme={theme} indentation={indentation + getIndentationString(indentSize)} indentSize={indentSize} parentXPath={parentXpath} />}
+            {elements && <Elements elements={elements} theme={theme} indentation={indentation + getIndentationString(indentSize)} indentSize={indentSize} renderAttribute={renderAttribute} renderElement={renderElement} parentXPath={parentXpath} />}
             {elements && <span style={{ color: theme.separatorColor }}>{`${isTextElement(elements) ? "" : indentation}</`}</span>}
             {elements && <span style={{ color: theme.tagColor }}>{name}</span>}
             {elements && <span style={{ color: theme.separatorColor }}>{">"}</span>}
@@ -43,12 +43,12 @@ Element.propTypes = {
 
 const identity = value => value;
 
-const getElement = (theme, indentation, indentSize, renderAttribute, parentXpath, xpath) => (element, index) => {
+const getElement = (theme, indentation, indentSize, renderAttribute, renderElement, parentXpath, xpath) => (element, index) => {
     switch (element.type) {
         case "text":
             return <TextElement key={`el-${index}`} text={element.text} theme={theme} xpath={xpath} />;
         case "element":
-            return <Element key={`el-${index}`} name={element.name} elements={element.elements} attributes={element.attributes} theme={theme} indentation={indentation} indentSize={indentSize} renderAttribute={renderAttribute} parentXpath={parentXpath} />
+            return <Element key={`el-${index}`} name={element.name} elements={element.elements} attributes={element.attributes} theme={theme} indentation={indentation} indentSize={indentSize} renderElement={renderElement} renderAttribute={renderAttribute} parentXpath={parentXpath} />
         case "comment":
             return <CommentElement key={`el-${index}`} comment={element.comment} theme={theme} indentation={indentation} xpath={xpath} />;
         case "cdata":
@@ -77,17 +77,29 @@ const getRelativeXpath = element => {
     }
 }
 
-const Elements = ({ elements, theme, indentation, indentSize, renderAttribute, renderElement, parentXPath }) => {
+const getElements = ({ elements, theme, indentation, indentSize, renderAttribute, renderElement, parentXPath }) => {
+    const xpathIndex = {}
     return elements.map((element, index) => {
       const { name } = element
-      const parentXpath = `${parentXPath}/${name}[${index}]`
+      if (xpathIndex[name]) {
+        xpathIndex[name] += 1
+      } else {
+        xpathIndex[name] = 1
+      }
+      const parentXpath = name ? `${parentXPath}/${name}[${xpathIndex[name]}]` : parentXPath
       const xpath = `${parentXpath}${getRelativeXpath(element)}`
       const elementWrapper = renderElement
-          ? el => renderElement({ indentation, indentSize, theme, element, xpath: `relative` }, el)
+          ? el => renderElement({ indentation, indentSize, theme, element, xpath }, el)
           : identity;
 
-      return elementWrapper(getElement(theme, indentation, indentSize, renderAttribute, parentXpath, xpath)(element, index))
+      return elementWrapper(getElement(theme, indentation, indentSize, renderAttribute, renderElement, parentXpath, xpath)(element, index))
     })
+}
+
+const Elements = props => {
+  const elementsArr = getElements(props)
+
+  return <span>{elementsArr}</span>
 }
 
 Elements.propTypes = {

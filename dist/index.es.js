@@ -2329,7 +2329,7 @@ var identity = function identity(value) {
   return value;
 };
 
-var Attributes = function Attributes(_ref) {
+var getAttributes = function getAttributes(_ref) {
   var attributes = _ref.attributes,
       theme = _ref.theme,
       renderAttribute = _ref.renderAttribute,
@@ -2370,6 +2370,16 @@ var Attributes = function Attributes(_ref) {
   }
 
   return attributeList;
+};
+
+var Attributes = function Attributes(props) {
+  var attrArr = getAttributes(props);
+
+  return React.createElement(
+    'span',
+    null,
+    attrArr
+  );
 };
 
 Attributes.propTypes = {
@@ -2517,6 +2527,7 @@ var Element = function Element(_ref) {
         indentation = _ref.indentation,
         indentSize = _ref.indentSize,
         renderAttribute = _ref.renderAttribute,
+        renderElement = _ref.renderElement,
         parentXpath = _ref.parentXpath;
 
     return React.createElement(
@@ -2538,7 +2549,7 @@ var Element = function Element(_ref) {
             { style: { color: theme.separatorColor } },
             elements ? '>' : '/>'
         ),
-        elements && React.createElement(Elements, { elements: elements, theme: theme, indentation: indentation + getIndentationString(indentSize), indentSize: indentSize, parentXPath: parentXpath }),
+        elements && React.createElement(Elements, { elements: elements, theme: theme, indentation: indentation + getIndentationString(indentSize), indentSize: indentSize, renderAttribute: renderAttribute, renderElement: renderElement, parentXPath: parentXpath }),
         elements && React.createElement(
             'span',
             { style: { color: theme.separatorColor } },
@@ -2572,13 +2583,13 @@ var identity$1 = function identity(value) {
     return value;
 };
 
-var getElement = function getElement(theme, indentation, indentSize, renderAttribute, parentXpath, xpath) {
+var getElement = function getElement(theme, indentation, indentSize, renderAttribute, renderElement, parentXpath, xpath) {
     return function (element, index) {
         switch (element.type) {
             case "text":
                 return React.createElement(TextElement, { key: 'el-' + index, text: element.text, theme: theme, xpath: xpath });
             case "element":
-                return React.createElement(Element, { key: 'el-' + index, name: element.name, elements: element.elements, attributes: element.attributes, theme: theme, indentation: indentation, indentSize: indentSize, renderAttribute: renderAttribute, parentXpath: parentXpath });
+                return React.createElement(Element, { key: 'el-' + index, name: element.name, elements: element.elements, attributes: element.attributes, theme: theme, indentation: indentation, indentSize: indentSize, renderElement: renderElement, renderAttribute: renderAttribute, parentXpath: parentXpath });
             case "comment":
                 return React.createElement(CommentElement, { key: 'el-' + index, comment: element.comment, theme: theme, indentation: indentation, xpath: xpath });
             case "cdata":
@@ -2608,7 +2619,7 @@ var getRelativeXpath = function getRelativeXpath(element) {
     }
 };
 
-var Elements = function Elements(_ref2) {
+var getElements = function getElements(_ref2) {
     var elements = _ref2.elements,
         theme = _ref2.theme,
         indentation = _ref2.indentation,
@@ -2617,17 +2628,33 @@ var Elements = function Elements(_ref2) {
         renderElement = _ref2.renderElement,
         parentXPath = _ref2.parentXPath;
 
+    var xpathIndex = {};
     return elements.map(function (element, index) {
         var name = element.name;
 
-        var parentXpath = parentXPath + '/' + name + '[' + index + ']';
+        if (xpathIndex[name]) {
+            xpathIndex[name] += 1;
+        } else {
+            xpathIndex[name] = 1;
+        }
+        var parentXpath = name ? parentXPath + '/' + name + '[' + xpathIndex[name] + ']' : parentXPath;
         var xpath = '' + parentXpath + getRelativeXpath(element);
         var elementWrapper = renderElement ? function (el) {
-            return renderElement({ indentation: indentation, indentSize: indentSize, theme: theme, element: element, xpath: 'relative' }, el);
+            return renderElement({ indentation: indentation, indentSize: indentSize, theme: theme, element: element, xpath: xpath }, el);
         } : identity$1;
 
-        return elementWrapper(getElement(theme, indentation, indentSize, renderAttribute, parentXpath, xpath)(element, index));
+        return elementWrapper(getElement(theme, indentation, indentSize, renderAttribute, renderElement, parentXpath, xpath)(element, index));
     });
+};
+
+var Elements = function Elements(props) {
+    var elementsArr = getElements(props);
+
+    return React.createElement(
+        'span',
+        null,
+        elementsArr
+    );
 };
 
 Elements.propTypes = {
